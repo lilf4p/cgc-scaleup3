@@ -36,7 +36,6 @@ def request_and_save(url, filename):
 
     return path
 
-
 # app endpoints
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -52,14 +51,16 @@ def index():
 
 @app.route('/watermark', methods=['POST'])
 def apply_watermark():
-    bucket_name = "" # INSERT YOUR BUCKET NAME
+    bucket_name = "cgcscaleup3" # INSERT YOUR BUCKET NAME
 
     filename = request.form['filename']
     path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     r1 = s3_client.upload_file(path, bucket_name, filename, ExtraArgs={'ACL': 'public-read'})
+    bucket_url = 'https://cgcscaleup3.s3.us-east-2.amazonaws.com/' + filename
 
+    # api key P23OWF071I39S6QUR2EL9MDT74B165JX48CKYZ8N0A5VHG
     # GENERATE REQUEST FOR QRACKAJACK
-    qr_req_url = ""
+    qr_req_url = f'https://qrackajack.expeditedaddons.com/?api_key=P23OWF071I39S6QUR2EL9MDT74B165JX48CKYZ8N0A5VHG&content={bucket_url}'
 
     qr_name = f"qr_{filename}"
     qr_path = request_and_save(qr_req_url, qr_name)
@@ -68,7 +69,8 @@ def apply_watermark():
 
 
     # GENERATE REQUEST FOR WATERMARKER
-    watermark_req_url = ""
+    # warermarker api key    "5VYN48U9MFBOIR96Q1J40PWTHD23A5XG13C87Z2KES0L67"
+    watermark_req_url = f"https://watermarker.expeditedaddons.com?api_key=5VYN48U9MFBOIR96Q1J40PWTHD23A5XG13C87Z2KES0L67&image_url={bucket_url}&watermark_url={qr_path}&opacity=50&position=center&width=100&height=100"
 
     watermark_name = f"watermark_{filename}"
     request_and_save(watermark_req_url, watermark_name)
@@ -81,5 +83,5 @@ def apply_watermark():
     return render_template("upload.html", filename=watermark_name)
 
 
-if __name__ == '__main__':
+if name == '__main__':
     app.run(debug=True)
