@@ -6,6 +6,7 @@ import boto3
 import requests
 from PIL import Image
 from flask import Flask, render_template, request, flash
+from requests.api import get
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -56,21 +57,26 @@ def apply_watermark():
     filename = request.form['filename']
     path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     r1 = s3_client.upload_file(path, bucket_name, filename, ExtraArgs={'ACL': 'public-read'})
-    bucket_url = 'https://cgcscaleup3.s3.us-east-2.amazonaws.com/' + filename
+
+    #bucket_url = 'https://cgcscaleup3.s3.us-east-2.amazonaws.com/' + filename
+
+    image_url = get_s3_url(bucket_name=bucket_name, filename=filename)
 
     # api key P23OWF071I39S6QUR2EL9MDT74B165JX48CKYZ8N0A5VHG
     # GENERATE REQUEST FOR QRACKAJACK
-    qr_req_url = f'https://qrackajack.expeditedaddons.com/?api_key=P23OWF071I39S6QUR2EL9MDT74B165JX48CKYZ8N0A5VHG&content={bucket_url}'
+    qr_req_url = f'https://qrackajack.expeditedaddons.com/?api_key=P23OWF071I39S6QUR2EL9MDT74B165JX48CKYZ8N0A5VHG&content={image_url}'
 
     qr_name = f"qr_{filename}"
     qr_path = request_and_save(qr_req_url, qr_name)
 
     r2 = s3_client.upload_file(qr_path, bucket_name, qr_name, ExtraArgs={'ACL': 'public-read'})
 
+    qr_url = get_s3_url(bucket_name, qr_name)
+
 
     # GENERATE REQUEST FOR WATERMARKER
     # warermarker api key    "5VYN48U9MFBOIR96Q1J40PWTHD23A5XG13C87Z2KES0L67"
-    watermark_req_url = f"https://watermarker.expeditedaddons.com?api_key=5VYN48U9MFBOIR96Q1J40PWTHD23A5XG13C87Z2KES0L67&image_url={bucket_url}&watermark_url={qr_path}&opacity=50&position=center&width=100&height=100"
+    watermark_req_url = f"https://watermarker.expeditedaddons.com?api_key=5VYN48U9MFBOIR96Q1J40PWTHD23A5XG13C87Z2KES0L67&image_url={image_url}&watermark_url={qr_url}&opacity=50&position=center&width=100&height=100"
 
     watermark_name = f"watermark_{filename}"
     request_and_save(watermark_req_url, watermark_name)
@@ -83,5 +89,5 @@ def apply_watermark():
     return render_template("upload.html", filename=watermark_name)
 
 
-if name == '__main__':
+if __name__ == '__main__':
     app.run(debug=True)
